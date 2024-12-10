@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 
 # Load the trained model
-model = tf.keras.models.load_model('mobilenetv2_sign_language_model.h5')
+model = tf.keras.models.load_model('cnn_tensorflow_model.h5')
 
 # Define the class labels
 classes = ["hello", "i_love_you", "namaste", "silent", "thank_you", "fight", "heart", "please", "perfect", "give", "help", "sorry", "water"]
