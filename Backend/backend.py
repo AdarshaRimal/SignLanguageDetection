@@ -3,8 +3,10 @@ from flask_cors import CORS
 import tensorflow as tf
 import numpy as np
 from PIL import Image
-import cv2
 from ultralytics import YOLO
+from flask import Response
+import cv2
+import json
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -12,6 +14,7 @@ CORS(app)  # Allow cross-origin requests
 # Load CNN and EfficientNet models
 cnn_model = tf.keras.models.load_model("../models/sign_language_cnn_model.h5")
 efficientnet_model = tf.keras.models.load_model("../models/model_keras.h5")
+
 
 # Compile TensorFlow models
 cnn_model.compile(optimizer=tf.keras.optimizers.Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
@@ -35,12 +38,12 @@ def preprocess_image(file, model_type="cnn", size=(300, 300)):
 
     if model_type == "cnn":
         img = img.resize((224, 224), Image.LANCZOS)
+        inp_numpy = np.array(img)[None, ...] / 255.0  # Normalize for CNN
     elif model_type == "efficientnet":
         img = img.resize((size[0], size[1]), Image.LANCZOS)
+        inp_numpy = np.array(img)[None, ...]          # No normalization for EfficientNet
 
-    inp_numpy = np.array(img)[None, ...] / 255.0  # Normalize image
     return inp_numpy
-
 
 # ========================= STATIC IMAGE CLASSIFICATION API =========================
 @app.route('/classify-image', methods=['POST'])
@@ -76,7 +79,7 @@ def classify_image():
 def detect_gesture():
     """Streams real-time gesture detection using YOLOv8."""
     def generate_frames():
-        cap = cv2.VideoCapture(0)  # Open webcam
+        cap = cv2.VideoCapture(1)  # Open webcam
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -96,6 +99,7 @@ def detect_gesture():
         cap.release()
 
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 
 # ========================= GESTURE INFORMATION API =========================
