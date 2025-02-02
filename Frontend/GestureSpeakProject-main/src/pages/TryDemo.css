@@ -1,0 +1,53 @@
+.try-demo-page {
+  padding: 40px;
+  background-color: #f9f9f9;
+  text-align: center;
+}
+
+.try-demo-header {
+  margin-bottom: 30px;
+}
+
+.try-demo-header h1 {
+  font-size: 2.5rem;
+  font-weight: bold;
+}
+
+.try-demo-header p {
+  font-size: 1.2rem;
+  color: #666;
+  max-width: 800px;
+  margin: 0 auto 20px;
+}
+
+.demo-description {
+  margin-top: 30px;
+  text-align: left;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.demo-description h2 {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.demo-description ol,
+.demo-description ul {
+  font-size: 1.2rem;
+  color: #555;
+  line-height: 1.6;
+  padding-left: 20px;
+}
+
+.demo-description ol li,
+.demo-description ul li {
+  margin-bottom: 10px;
+}
+
+.demo-description strong {
+  color: #4CAF50;
+}
+

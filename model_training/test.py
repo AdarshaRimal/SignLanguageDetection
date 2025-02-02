@@ -4,7 +4,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 
 # Load the model
-model = load_model('../models/sign_language_cnn_model.h5')
+model = load_model('../models/model_keras.h5')
 
 # Define the image preprocessing function
 def preprocess_image(image_path, target_size=(224, 224)):  # Adjust target size to the model's required input size
@@ -27,5 +27,5 @@ def test_model(image_path):
     print(f"Predicted Class: {class_idx}, Confidence: {predictions[0][class_idx]}")
 
 # Test with an image
-image_path = 'image_17.png'  # Example image
+image_path = 'C:\\Users\Adarsha Rimal\\Desktop\\sign_language_detection\\dataset\\give\\image_8.png'  # Example image
 test_model(image_path)

@@ -4,22 +4,23 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 import cv2
+from ultralytics import YOLO
 
-# Initialize the Flask app
+# Initialize Flask app
 app = Flask(__name__)
-CORS(app)
-
-# Load models
+CORS(app)  # Allow cross-origin requests
+# Load CNN and EfficientNet models
 cnn_model = tf.keras.models.load_model("../models/sign_language_cnn_model.h5")
 efficientnet_model = tf.keras.models.load_model("../models/model_keras.h5")
-# Placeholder for YOLO model
-yolo_model = None  # Replace with actual YOLO model loading when available
 
 # Compile TensorFlow models
 cnn_model.compile(optimizer=tf.keras.optimizers.Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
 efficientnet_model.compile(optimizer=tf.keras.optimizers.Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
 
-# Define the class labels
+# Load YOLO model for real-time gesture detection
+yolo_model = YOLO("../models/best.pt")
+
+# Define class labels
 classes = [
     "fight", "give", "hats_off", "heart", "hello",
     "help", "i_love_you", "namaste", "no", "perfect",
@@ -27,43 +28,38 @@ classes = [
     "water", "yes"
 ]
 
-
-# Preprocessing function for images
-
+# ========================= IMAGE PREPROCESSING FUNCTION =========================
 def preprocess_image(file, model_type="cnn", size=(300, 300)):
-    # Open image and convert to RGB
+    """Preprocess an image for CNN or EfficientNet models."""
     img = Image.open(file).convert('RGB')
 
-    # Resize image according to the model type
     if model_type == "cnn":
-        img = img.resize((224, 224), Image.LANCZOS)  # Resize for CNN model (224x224)
+        img = img.resize((224, 224), Image.LANCZOS)
     elif model_type == "efficientnet":
-        img = img.resize((size[0], size[1]), Image.LANCZOS)  # Resize for EfficientNet model (300x300)
+        img = img.resize((size[0], size[1]), Image.LANCZOS)
 
-    # Convert image to numpy array and normalize
-    inp_numpy = np.array(img)[None, ...]  # Add batch dimension
-    inp_numpy = inp_numpy / 255.0  # Normalize pixel values to [0, 1]
-
+    inp_numpy = np.array(img)[None, ...] / 255.0  # Normalize image
     return inp_numpy
 
 
-# API: Static Image Classification
+# ========================= STATIC IMAGE CLASSIFICATION API =========================
 @app.route('/classify-image', methods=['POST'])
 def classify_image():
+    """Classifies a static image using CNN or EfficientNet."""
     if 'image' not in request.files:
         return jsonify({'error': 'No image uploaded'}), 400
 
     file = request.files['image']
-    model_type = request.form.get('model_type', 'cnn')  # Get model type (default is cnn)
+    model_type = request.form.get('model_type', 'cnn')
 
-    # Preprocess image based on the model type
     image = preprocess_image(file, model_type=model_type)
 
-    # Predict using the chosen model
     if model_type == "cnn":
         predictions = cnn_model.predict(image)[0]
     elif model_type == "efficientnet":
         predictions = efficientnet_model.predict(image)[0]
+    else:
+        return jsonify({'error': 'Invalid model type'}), 400
 
     class_idx = np.argmax(predictions)
     confidence = predictions[class_idx]
@@ -75,9 +71,10 @@ def classify_image():
     })
 
 
-# API: Real-Time Gesture Detection (YOLO Placeholder)
+# ========================= REAL-TIME GESTURE DETECTION API (YOLO) =========================
 @app.route('/detect-gesture', methods=['GET'])
 def detect_gesture():
+    """Streams real-time gesture detection using YOLOv8."""
     def generate_frames():
         cap = cv2.VideoCapture(0)  # Open webcam
         while True:
@@ -85,52 +82,60 @@ def detect_gesture():
             if not ret:
                 break
 
-            # TODO: Add YOLO inference logic here
-            # For now, just display raw frames
-            _, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
+            # Run YOLO model for gesture detection
+            results = yolo_model(frame, conf=0.5, iou=0.5)
+            for result in results:
+                frame_with_boxes = result.plot()  # Draw detections
+
+            _, buffer = cv2.imencode('.jpg', frame_with_boxes)
+            frame_bytes = buffer.tobytes()
 
             yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
         cap.release()
 
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-# API: Gesture Information
+# ========================= GESTURE INFORMATION API =========================
 @app.route('/gesture-info/<gesture_id>', methods=['GET'])
 def gesture_info(gesture_id):
+    """Returns information about a specific sign gesture."""
     gesture_details = {
         "hello": "A common greeting gesture.",
         "thank_you": "A sign of gratitude.",
         "i_love_you": "A gesture to express love.",
-        # Add details for other gestures...
+        "fight": "Indicates a conflict or struggle.",
+        "heart": "Represents love and affection.",
+        "water": "Sign for requesting water.",
+        # Add details for all gestures...
     }
 
     info = gesture_details.get(gesture_id.lower(), "Gesture information not found.")
     return jsonify({'gesture': gesture_id, 'info': info})
 
 
-# API: Compare Models
+# ========================= MODEL COMPARISON API =========================
 @app.route('/compare-models', methods=['POST'])
 def compare_models():
+    """Compares CNN and EfficientNet predictions on the same image."""
     if 'image' not in request.files:
         return jsonify({'error': 'No image uploaded'}), 400
 
     file = request.files['image']
-    model_type = request.form.get('model_type', 'cnn')  # Get model type (default is cnn)
 
-    # Preprocess image based on the model type
-    image = preprocess_image(file, model_type=model_type)
+    # Preprocess images for both models
+    cnn_image = preprocess_image(file, model_type="cnn")
+    efficientnet_image = preprocess_image(file, model_type="efficientnet")
 
     # Predict using CNN
-    cnn_predictions = cnn_model.predict(image)[0]
+    cnn_predictions = cnn_model.predict(cnn_image)[0]
     cnn_class_idx = np.argmax(cnn_predictions)
     cnn_confidence = cnn_predictions[cnn_class_idx]
 
     # Predict using EfficientNet
-    efficientnet_predictions = efficientnet_model.predict(image)[0]
+    efficientnet_predictions = efficientnet_model.predict(efficientnet_image)[0]
     efficientnet_class_idx = np.argmax(efficientnet_predictions)
     efficientnet_confidence = efficientnet_predictions[efficientnet_class_idx]
 
@@ -148,12 +153,13 @@ def compare_models():
     })
 
 
-# API: Test Endpoint
+# ========================= API STATUS CHECK =========================
 @app.route('/test', methods=['GET'])
 def test():
+    """API health check."""
     return jsonify({"status": "OK", "message": "Backend is running!"})
 
 
-# Run the Flask app
+# ========================= RUN FLASK APP =========================
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
