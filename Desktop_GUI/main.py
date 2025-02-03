@@ -11,16 +11,61 @@ from tensorflow.keras.applications.efficientnet import preprocess_input
 
 # Load models
 yolo_model = YOLO("../models/best.pt")
-scratch_cnn_model = tf.keras.models.load_model("../models/sign_language_cnn_model.h5")
+
+#to resolve cnn model incompatability issue
+from tensorflow.keras.layers import InputLayer, BatchNormalization
+from tensorflow.keras.layers.experimental import SyncBatchNormalization
+from tensorflow.keras.mixed_precision import Policy
+
+
+class CustomInputLayer(InputLayer):
+    @classmethod
+    def from_config(cls, config):
+        if 'batch_shape' in config:
+            config['batch_input_shape'] = config.pop('batch_shape')
+        return super().from_config(config)
+
+
+class CustomBatchNormalization(BatchNormalization):
+    @classmethod
+    def from_config(cls, config):
+        config.pop('synchronized', None)
+        return super().from_config(config)
+
+
+class CustomSyncBatchNormalization(SyncBatchNormalization):
+    @classmethod
+    def from_config(cls, config):
+        config.pop('synchronized', None)
+        return super().from_config(config)
+
+
+CUSTOM_OBJECTS = {
+    'InputLayer': CustomInputLayer,
+    'BatchNormalization': CustomBatchNormalization,
+    'SyncBatchNormalization': CustomSyncBatchNormalization,
+    'DTypePolicy': Policy,
+}
+
+cnn_model = tf.keras.models.load_model(
+        "C:\\Users\\Adarsha Rimal\\Desktop\\sign_language_detection\\others_models\\scratch_cnn.h5",
+        custom_objects=CUSTOM_OBJECTS,
+        compile=False
+    )
+cnn_model.compile(
+        optimizer=tf.keras.optimizers.Adam(),
+        loss='categorical_crossentropy',
+        metrics=['accuracy']
+    )
 efficientnet_model = tf.keras.models.load_model("../models/model_keras.h5")
 
 # Compile CNN models
-scratch_cnn_model.compile(optimizer=tf.keras.optimizers.Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
+
 efficientnet_model.compile(optimizer=tf.keras.optimizers.Adam(), loss='categorical_crossentropy', metrics=['accuracy'])
 
 # Debug: Print model architectures
 print("Scratch CNN Model Summary:")
-scratch_cnn_model.summary()
+cnn_model.summary()
 
 print("\nEfficientNet Model Summary:")
 efficientnet_model.summary()
@@ -140,11 +185,11 @@ def capture_image():
 def predict_image(img):
     try:
         # Select the model based on the user's choice
-        model = scratch_cnn_model if selected_model.get() == "Scratch CNN" else efficientnet_model
+        model = cnn_model if selected_model.get() == "Scratch CNN" else efficientnet_model
 
         # Resize the image based on the selected model's input size
         if selected_model.get() == "Scratch CNN":
-            img_resized = img.resize((224, 224), Image.LANCZOS)
+            img_resized = img.resize((640, 480), Image.LANCZOS)
             img_array = np.array(img_resized)[None, ...]
             img_array = img_array / 255.0  # Normalize for Scratch CNN
         else:
