@@ -5,11 +5,11 @@ import numpy as np
 from PIL import Image
 from ultralytics import YOLO
 import cv2
-import os
+
 
 # ---------------------------------------------
 # Uncomment if you need custom layer definitions.
-# (Currently commented out as requested)
+
 # ---------------------------------------------
 # from tensorflow.keras.layers import InputLayer, BatchNormalization
 # from tensorflow.keras.layers.experimental import SyncBatchNormalization
@@ -72,7 +72,7 @@ try:
     )
 
     # Load YOLO Model
-    yolo_model = YOLO("../models/best.pt")
+    yolo_model = YOLO("../models/best.pt").to("cuda")
 
 except Exception as e:
     print(f"Error loading models: {str(e)}")
@@ -102,7 +102,7 @@ def preprocess_image(file, model_type="cnn"):
     elif model_type == "efficientnet":
         # For EfficientNetB0
         img = img.resize((300, 300), Image.LANCZOS)
-        img_array = np.array(img)[None, ...] / 255.0
+        img_array = np.array(img)[None, ...]
     else:
         # Default to CNN preprocessing if unknown model_type
         img = img.resize((224, 224), Image.LANCZOS)
@@ -221,7 +221,7 @@ def detect_gesture():
             success, frame = cap.read()
             if not success:
                 break
-            results = yolo_model(frame, conf=0.5, iou=0.5)
+            results = yolo_model(frame, conf=0.3, iou=0.5)
             annotated_frame = results[0].plot()
             _, buffer = cv2.imencode('.jpg', annotated_frame)
             yield (b'--frame\r\n'
@@ -280,6 +280,60 @@ def remove_background_api():
         if not success:
             return jsonify({'error': 'Failed to encode image'}), 500
         return Response(encoded_image.tobytes(), mimetype='image/jpeg')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+import base64
+
+@app.route('/object-detection', methods=['POST'])
+def object_detection():
+    """
+    This endpoint accepts an image file, performs object detection using YOLO,
+    and returns a JSON response containing:
+      - A Base64-encoded annotated image (with bounding boxes).
+      - A list of detected class names.
+    """
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image uploaded'}), 400
+
+    try:
+        # Read the image file from the request.
+        file = request.files['image']
+        file_bytes = np.frombuffer(file.read(), np.uint8)
+        image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+        if image is None:
+            return jsonify({'error': 'Invalid image format'}), 400
+
+        # Run YOLO detection on the image.
+        results = yolo_model(image, conf=0.5, iou=0.5)
+
+        # Annotate the image with bounding boxes and labels.
+        annotated_image = results[0].plot()
+
+        # Extract detected class names.
+        # Ensure that the model has detected at least one object.
+        detected_class_names = []
+        if hasattr(results[0].boxes, "cls") and results[0].boxes.cls is not None:
+            # Convert tensor to a numpy array if needed.
+            class_ids = results[0].boxes.cls.cpu().numpy() if hasattr(results[0].boxes.cls, "cpu") else results[0].boxes.cls
+            # results[0].names is a dictionary mapping class IDs to class names.
+            detected_class_names = [results[0].names[int(cls)] for cls in class_ids]
+
+        # Encode the annotated image as JPEG.
+        success, encoded_image = cv2.imencode('.jpg', annotated_image)
+        if not success:
+            return jsonify({'error': 'Failed to encode image'}), 500
+
+        # Convert the image to a Base64-encoded string.
+        encoded_image_str = base64.b64encode(encoded_image.tobytes()).decode('utf-8')
+
+        # Return the result as JSON.
+        return jsonify({
+            'annotated_image': encoded_image_str,
+            'classes': detected_class_names
+        })
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
