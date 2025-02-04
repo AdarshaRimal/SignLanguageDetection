@@ -96,7 +96,7 @@ GestureSpeak is a web-based system designed to translate sign language gestures 
 ### Backend
 ```bash
 # Clone the repository
-git clone https://github.com/your-repo/GestureSpeak.git
+git clone https://github.com/AdarshaRimal/SignLanguageDetection.git
 cd GestureSpeak/Backend
 
 # Install dependencies
