@@ -141,7 +141,7 @@ def detect_gestures():
     if not ret:
         return
 
-    results = yolo_model(frame, conf=0.5, iou=0.5)
+    results = yolo_model(frame, conf=0.3, iou=0.5)
     for result in results:
         frame_with_boxes = result.plot()
         for box in result.boxes:
