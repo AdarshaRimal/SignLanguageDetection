@@ -5,6 +5,7 @@
 
 
 ## Table of Contents
+
 1. [Overview](#overview)
 2. [Demo](#demo)
 3. [Features](#features)
@@ -12,17 +13,20 @@
 5. [Dataset](#dataset)
 6. [Model Training](#model-training)
 7. [Algorithms](#algorithms)
-7. [Deployment](#deployment)
-8. [Installation & Usage](#installation--usage)
-9. [Contributors](#contributors)
-10. [Acknowledgments](#acknowledgments)
-11. [License](#license)
+8. [Deployment](#deployment)
+9. [Installation & Usage](#installation--usage)
+10. [Contributors](#contributors)
+11. [Acknowledgments](#acknowledgments)
+12. [Hugging Face Deployment](#hugging-face-deployment)
+13. [License](#license)
+
 
 ## Overview
 GestureSpeak is a web-based system designed to translate sign language gestures into text and speech in real-time. The project utilizes deep learning techniques, including CNNs, EfficientNet, and YOLO, for static image classification and real-time gesture detection.
 
 ## Demo
 ### Project Screenshots
+[![Watch the Demo](https://img.youtube.com/vi/uPERwf58LZY/0.jpg)](https://www.youtube.com/watch?v=uPERwf58LZY)
 ![Main Interface](Project%20screenshot/Screenshot%202025-02-04%20101952.png)
 ![Live Demo](Project%20screenshot/Screenshot%202025-02-04%20102024.png)
 ![Image Classification](Project%20screenshot/Screenshot%202025-02-04%20102043.png)
@@ -129,6 +133,10 @@ python main.py
 - OpenCV for data collection
 - MediaPipe for hand landmarks
 - YOLO for real-time detection
+
+## Hugging Face Deployment
+
+- Test the YOLO model performance on [Hugging Face](https://huggingface.co/spaces/AdarshaRimal/SignLanguageDetector)
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE.txt) file for details.
